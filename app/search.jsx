@@ -13,7 +13,7 @@ export default function SearchScreen() {
   // Determine if we should show TV UI
   // Note: Platform.isTV works for Apple TV/Android TV. 
   // For testing on a browser, you can manually toggle this.
-  const isTV = Platform.isTV || Platform.OS === 'web'; // Assuming web behaves like Desktop for this demo
+  const isTV = Platform.isTV || Platform.OS != 'web'; // Assuming web behaves like Desktop for this demo
 
   console.log(Platform.isTV, Platform.OS)
 
