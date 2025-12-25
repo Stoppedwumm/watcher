@@ -22,17 +22,39 @@ export default function PlayerControls({
   return (
     <Pressable style={styles.overlay} onPress={onToggleVisibility}>
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={onBack} style={styles.btn}><Ionicons name="arrow-back" size={28} color="white" /></TouchableOpacity>
+        <TouchableOpacity onPress={onBack} style={styles.btn}>
+          <Ionicons name="arrow-back" size={28} color="white" />
+        </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.midControls}>
-        <TouchableOpacity onPress={onSeekBack}><MaterialIcons name="replay-10" size={50} color="white" /></TouchableOpacity>
-        <TouchableOpacity onPress={onPlayPause} style={styles.playCircle}>
-          {buffering ? <ActivityIndicator size="large" color="white" /> : <Ionicons name={playing ? "pause" : "play"} size={45} color="white" />}
+        <TouchableOpacity onPress={onSeekBack}>
+          <MaterialIcons name="replay-10" size={50} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={onSeekForward}><MaterialIcons name="forward-10" size={50} color="white" /></TouchableOpacity>
+
+        {/* Updated Play/Pause Button with Spinner logic */}
+        <TouchableOpacity 
+          onPress={onPlayPause} 
+          style={styles.playCircle}
+          disabled={buffering} // Prevent clicks while loading
+        >
+          {buffering ? (
+            <ActivityIndicator size="large" color="#E50914" /> 
+          ) : (
+            <Ionicons 
+              name={playing ? "pause" : "play"} 
+              size={45} 
+              color="white" 
+              style={{ marginLeft: playing ? 0 : 5 }} // Optical centering for play icon
+            />
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onSeekForward}>
+          <MaterialIcons name="forward-10" size={50} color="white" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.bottomBar}>
@@ -80,7 +102,16 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { color: 'white', fontSize: 20, fontWeight: 'bold', flex: 1, textAlign: 'center' },
   midControls: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 60 },
-  playCircle: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, borderColor: 'white', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  playCircle: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    borderWidth: 2, 
+    borderColor: 'white', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(255,255,255,0.1)' 
+  },
   bottomBar: { width: '100%', position: 'relative', paddingBottom: 10 },
   timeInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' },
   timeText: { color: 'white', fontSize: 14, fontWeight: '500' },

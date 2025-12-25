@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View, Dimensions } from 'react-native';
 
-export default function NetflixIntro({ onFinished, logoText = "N" }) {
+export default function NetflixIntro({ onFinished, logoText = "ST" }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
