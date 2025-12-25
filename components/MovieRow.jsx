@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, Text, ScrollView, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const IMG_BASE = "https://image.tmdb.org/t/p/w500";
 
 export default function MovieRow({ title, data }) {
+  const router = useRouter();
   return (
     <View style={styles.container}>
       <Text style={styles.rowTitle}>{title}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {data.map((item) => (
-          <TouchableOpacity key={item._id} style={styles.card}>
+          <TouchableOpacity key={item._id} style={styles.card} onPress={() => router.push(`/movie/${item._id}`)}>
             <Image 
               source={{ uri: `${IMG_BASE}${item.poster_path}` }} 
               style={styles.image} 

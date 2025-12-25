@@ -1,117 +1,178 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import Sidebar from '../../components/Sidebar';
+// 1. Import the Storage utility
+import { Storage } from '../../utils/storage'; 
 
-const IMG_BASE = "https://image.tmdb.org/t/p/original";
+const IMG_BASE = "https://image.tmdb.org/t/p/w500";
 
 export default function MovieDetail() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
+  
   const [movie, setMovie] = useState(null);
+  const [relatedMovies, setRelatedMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
+  
+  // 2. Track if movie is in watchlist
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
 
   useEffect(() => {
-    fetch(`https://movie2k.ch/data/watch/?_id=${id}`)
-      .then(res => res.json())
-      .then(data => {
-        setMovie(data.movie);
+    setLoading(true);
+    const fetchMain = fetch(`https://movie2k.ch/data/watch/?_id=${id}`).then(res => res.json());
+    const fetchRelated = fetch(`https://movie2k.ch/data/related_movies/?lang=2&cat=movie&_id=${id}&server=0`).then(res => res.json());
+
+    Promise.all([fetchMain, fetchRelated])
+      .then(async ([mainData, relatedData]) => {
+        const movieData = mainData.movie || mainData;
+        setMovie(movieData);
+        setRelatedMovies(relatedData.movies || []);
+        
+        // 3. Check if this movie is already saved
+        const watchlist = await Storage.getList('watchlist');
+        setIsInWatchlist(watchlist.some(item => item._id === id));
+        
         setLoading(false);
       })
-      .catch(err => console.error(err));
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, [id]);
 
-  if (loading) return (
-    <View style={styles.centered}><ActivityIndicator size="large" color="#E50914" /></View>
-  );
+  // 4. Toggle function for the button
+  const toggleWatchlist = async () => {
+    if (isInWatchlist) {
+      await Storage.removeFromList('watchlist', movie._id);
+      setIsInWatchlist(false);
+    } else {
+      await Storage.saveToItemToList('watchlist', movie);
+      setIsInWatchlist(true);
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'OVERVIEW':
+        return (
+          <View>
+            <Text style={styles.description}>{movie.storyline || movie.overview}</Text>
+            <View style={styles.detailsGrid}>
+              <Text style={styles.detailLine}><Text style={styles.label}>Starring: </Text>{movie.cast?.filter(n => n !== "").slice(0, 3).join(', ')}...</Text>
+              <Text style={styles.detailLine}><Text style={styles.label}>Genre: </Text>{movie.genres}</Text>
+            </View>
+          </View>
+        );
+      case 'TRAILERS & MORE':
+        return (
+          <View style={styles.placeholderTab}>
+            <Ionicons name="videocam-outline" size={50} color="#333" />
+            <Text style={styles.placeholderText}>No trailers available for this server.</Text>
+          </View>
+        );
+      case 'MORE LIKE THIS':
+        return (
+          <View style={styles.relatedGrid}>
+            {relatedMovies.map((item) => (
+              <TouchableOpacity 
+                key={item._id} 
+                style={styles.relatedCard}
+                onPress={() => router.push(`/movie/${item._id}`)}
+              >
+                <Image 
+                  source={{ uri: `${IMG_BASE}${item.backdrop_path || item.poster_path}` }} 
+                  style={styles.relatedImg} 
+                />
+                <Text style={styles.relatedName} numberOfLines={1}>{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        );
+      case 'DETAILS':
+        return (
+          <View style={styles.detailsList}>
+            <Text style={styles.detailLine}><Text style={styles.label}>Full Cast: </Text>{movie.cast?.filter(n => n !== "").join(', ')}</Text>
+            <Text style={styles.detailLine}><Text style={styles.label}>Directors: </Text>{movie.directors?.join(', ')}</Text>
+            <Text style={styles.detailLine}><Text style={styles.label}>Runtime: </Text>{movie.runtime} minutes</Text>
+            <Text style={styles.detailLine}><Text style={styles.label}>Release Year: </Text>{movie.year}</Text>
+            <Text style={styles.detailLine}><Text style={styles.label}>Language: </Text>{movie.language?.toUpperCase()}</Text>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  if (loading) return <View style={styles.centered}><ActivityIndicator size="large" color="#E50914" /></View>;
+  if (!movie) return null;
 
   return (
     <View style={styles.container}>
       <Sidebar />
-      
       <View style={styles.mainContent}>
-        {/* TOP NAVIGATION BAR */}
-        <View style={styles.topNav}>
-          <View style={styles.navLeft}>
-            <Text style={styles.netflixLogo}>NETFLIX</Text>
-            <Text style={styles.navLink}>Browse</Text>
-            <TouchableOpacity style={styles.searchLink}>
-              <Ionicons name="search" size={18} color="gray" />
-              <Text style={styles.navLink}>Search</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.navRight}>
-            <Ionicons name="notifications" size={20} color="white" style={{ marginRight: 20 }} />
-            <View style={styles.profilePic} />
-          </View>
-        </View>
-
         <ScrollView contentContainerStyle={styles.scrollBody}>
           <View style={styles.detailLayout}>
             
-            {/* LEFT SIDE: POSTER */}
+            {/* POSTER & ACTION BUTTONS */}
             <View style={styles.posterContainer}>
-              <Image 
-                source={{ uri: `${IMG_BASE}${movie.poster_path}` }} 
-                style={styles.mainPoster} 
-              />
-              <TouchableOpacity style={styles.playButton}>
-                <Ionicons name="play" size={30} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.volumeButton}>
-                <Ionicons name="volume-medium" size={20} color="white" />
-              </TouchableOpacity>
+              <Image source={{ uri: `https://image.tmdb.org/t/p/original${movie.poster_path}` }} style={styles.mainPoster} />
+              
+              <View style={styles.actionButtonsRow}>
+                {/* PLAY BUTTON */}
+                <TouchableOpacity style={styles.playButton} onPress={() => {
+                  router.push(`/watch/${movie._id}`);
+                }}>
+                  <Ionicons name="play" size={30} color="white" />
+                </TouchableOpacity>
+
+                {/* 5. WATCHLIST BUTTON */}
+                <TouchableOpacity 
+                  style={[styles.saveButton, isInWatchlist && styles.savedButton]} 
+                  onPress={toggleWatchlist}
+                >
+                  <Ionicons 
+                    name={isInWatchlist ? "checkmark" : "add"} 
+                    size={30} 
+                    color="white" 
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            {/* RIGHT SIDE: INFO */}
+            {/* INFO */}
             <View style={styles.infoContainer}>
               <View style={styles.titleRow}>
                 <Text style={styles.title}>{movie.title}</Text>
                 <View style={styles.ratingBox}>
-                  <Text style={styles.ratingText}>{movie.rating?.toFixed(1) || "9.0"}</Text>
-                  <FontAwesome name="star" size={16} color="#FFD700" />
+                  <Text style={styles.ratingValue}>{movie.rating}</Text>
+                  <FontAwesome name="star" size={20} color="#FFD700" />
                 </View>
               </View>
 
               <View style={styles.metaRow}>
-                <Text style={styles.metaItem}>{movie.year}</Text>
-                <Text style={styles.metaItem}> | </Text>
-                <Text style={styles.metaItem}>2h 23min</Text>
-                <Text style={styles.metaItem}> | </Text>
+                <Text style={styles.metaText}>{movie.year}  |  {movie.runtime} min  |  </Text>
                 <View style={styles.ageBadge}><Text style={styles.ageText}>16+</Text></View>
               </View>
 
-              {/* TABS */}
+              {/* TABS HEADER */}
               <View style={styles.tabBar}>
                 {['OVERVIEW', 'TRAILERS & MORE', 'MORE LIKE THIS', 'DETAILS'].map(tab => (
-                  <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}>
+                  <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={styles.tabItem}>
                     <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
                     {activeTab === tab && <View style={styles.tabIndicator} />}
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <Text style={styles.description}>{movie.overview}</Text>
-
-              <View style={styles.castBox}>
-                <Text style={styles.castItem}><Text style={styles.label}>Starring:  </Text>{movie.cast?.join(', ')}</Text>
-                <Text style={styles.castItem}><Text style={styles.label}>Created by:  </Text>{movie.directors?.join(', ')}</Text>
-                <Text style={styles.castItem}><Text style={styles.label}>Genre:  </Text>{movie.genres?.join(', ')}</Text>
+              {/* DYNAMIC TAB CONTENT */}
+              <View style={styles.contentArea}>
+                {renderTabContent()}
               </View>
 
-              {/* RELATED MOVIES (Horizontal placeholders) */}
-              <Text style={styles.sectionTitle}>Related Movies</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {/* Normally you'd fetch real related movies here */}
-                {[1, 2, 3].map((i) => (
-                  <View key={i} style={styles.relatedCard}>
-                    <Image source={{ uri: `${IMG_BASE}${movie.backdrop_path}` }} style={styles.relatedImg} />
-                  </View>
-                ))}
-              </ScrollView>
             </View>
-
           </View>
         </ScrollView>
       </View>
@@ -123,55 +184,68 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000', flexDirection: 'row' },
   centered: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
   mainContent: { flex: 1 },
-  topNav: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: 40, 
-    height: 80,
-    backgroundColor: 'transparent'
+  scrollBody: { paddingVertical: 60, paddingHorizontal: 40 },
+  detailLayout: { flexDirection: 'row' },
+  posterContainer: { width: 300, height: 450 },
+  mainPoster: { width: '100%', height: '100%', borderRadius: 10, backgroundColor: '#111' },
+  
+  // Button Row Styling
+  actionButtonsRow: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: -30,
+    right: -20,
   },
-  navLeft: { flexDirection: 'row', alignItems: 'center' },
-  netflixLogo: { color: '#E50914', fontSize: 24, fontWeight: '900', marginRight: 40 },
-  navLink: { color: '#ccc', fontSize: 14, marginRight: 25, fontWeight: '500' },
-  searchLink: { flexDirection: 'row', alignItems: 'center' },
-  profilePic: { width: 30, height: 30, backgroundColor: '#444', borderRadius: 4 },
-  
-  scrollBody: { paddingBottom: 50 },
-  detailLayout: { flexDirection: 'row', paddingHorizontal: 60, marginTop: 20 },
-  
-  posterContainer: { width: 320, height: 480, position: 'relative' },
-  mainPoster: { width: '100%', height: '100%', borderRadius: 12 },
   playButton: { 
-    position: 'absolute', bottom: -25, right: -25, 
-    backgroundColor: '#E50914', width: 70, height: 70, 
-    borderRadius: 5, justifyContent: 'center', alignItems: 'center',
-    shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.5, shadowRadius: 10,
+    backgroundColor: '#E50914', 
+    width: 60, 
+    height: 60, 
+    borderRadius: 8, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginRight: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
   },
-  volumeButton: { position: 'absolute', bottom: -15, right: 60, width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: '#444', justifyContent: 'center', alignItems: 'center' },
+  saveButton: {
+    backgroundColor: '#333', 
+    width: 60, 
+    height: 60, 
+    borderRadius: 8, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    elevation: 5,
+  },
+  savedButton: {
+    backgroundColor: '#2e7d32', // Green when saved
+  },
 
-  infoContainer: { flex: 1, marginLeft: 80 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { color: 'white', fontSize: 42, fontWeight: 'bold' },
+  infoContainer: { flex: 1, marginLeft: 60 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  title: { color: 'white', fontSize: 44, fontWeight: 'bold', flex: 1 },
   ratingBox: { flexDirection: 'row', alignItems: 'center' },
-  ratingText: { color: 'white', fontSize: 24, fontWeight: '300', marginRight: 10 },
-
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-  metaItem: { color: '#666', fontSize: 16, marginRight: 10 },
-  ageBadge: { borderWidth: 1, borderColor: '#666', paddingHorizontal: 5, borderRadius: 3 },
-  ageText: { color: '#666', fontSize: 12 },
-
-  tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#222', marginBottom: 25 },
-  tabText: { color: '#666', fontSize: 14, fontWeight: 'bold', marginRight: 40, paddingBottom: 15 },
+  ratingValue: { color: 'white', fontSize: 24, marginRight: 8 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
+  metaText: { color: '#888', fontSize: 16 },
+  ageBadge: { borderWidth: 1, borderColor: '#555', paddingHorizontal: 6, borderRadius: 3 },
+  ageText: { color: '#888', fontSize: 12 },
+  tabBar: { flexDirection: 'row', marginTop: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
+  tabItem: { marginRight: 30, paddingBottom: 15 },
+  tabText: { color: '#666', fontSize: 13, fontWeight: 'bold' },
   activeTabText: { color: 'white' },
-  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 40, height: 3, backgroundColor: '#E50914' },
-
-  description: { color: '#eee', fontSize: 15, lineHeight: 24, marginBottom: 30 },
-  castBox: { marginBottom: 40 },
-  castItem: { color: '#eee', fontSize: 14, marginBottom: 8 },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: '#E50914' },
+  contentArea: { marginTop: 30 },
+  description: { color: '#bbb', fontSize: 15, lineHeight: 24, marginBottom: 20 },
+  detailsGrid: { marginTop: 10 },
+  detailLine: { color: 'white', fontSize: 14, marginBottom: 12, lineHeight: 20 },
   label: { color: '#666' },
-
-  sectionTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 20 },
-  relatedCard: { width: 220, height: 120, marginRight: 15 },
-  relatedImg: { width: '100%', height: '100%', borderRadius: 4, backgroundColor: '#222' }
+  placeholderTab: { height: 200, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { color: '#444', marginTop: 10 },
+  relatedGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  relatedCard: { width: '31%', marginRight: '2%', marginBottom: 20 },
+  relatedImg: { width: '100%', height: 110, borderRadius: 4, backgroundColor: '#111' },
+  relatedName: { color: '#888', fontSize: 11, marginTop: 8 },
+  detailsList: { paddingRight: 40 }
 });

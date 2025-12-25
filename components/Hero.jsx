@@ -2,11 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 const IMG_BASE = "https://image.tmdb.org/t/p/original";
 
 export default function Hero({ movie }) {
   if (!movie) return null;
+
+  const router = useRouter();
 
   return (
     <ImageBackground 
@@ -34,11 +37,15 @@ export default function Hero({ movie }) {
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.playBtn}>
+          <TouchableOpacity style={styles.playBtn} onPress={() => {
+            router.push(`/watch/${movie._id}`);
+          }}>
             <Ionicons name="play" size={20} color="black" />
             <Text style={styles.playText}>Play</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.infoBtn}>
+          <TouchableOpacity style={styles.infoBtn} onPress={() => {
+            router.push(`/movie/${movie._id}`)
+          }}>
             <Text style={styles.infoText}>More Info</Text>
           </TouchableOpacity>
         </View>
