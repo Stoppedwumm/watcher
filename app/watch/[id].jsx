@@ -210,6 +210,28 @@ export default function WatchScreen() {
                 onSeekForward={() => videoRef.current.setPositionAsync(status.positionMillis + 10000)}
                 onSeek={(m) => videoRef.current.setPositionAsync(m)}
                 onBack={() => router.back()}
+                onToggleFullscreen={() => {
+                  if (Platform.OS !== 'web') {
+                    ScreenOrientation.getOrientationAsync().then(orientation => {
+                      if (orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT || orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT) {
+                        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+                      } else {
+                        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+                      }
+                    });
+                  } else {
+                    const docElm = document.documentElement;
+                    if (!document.fullscreenElement) {
+                      if (docElm.requestFullscreen) {
+                        docElm.requestFullscreen();
+                      }
+                    } else {
+                      if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                      }
+                    }
+                  }
+                }}
               />
             </SafeAreaView>
           </View>
@@ -228,7 +250,7 @@ const styles = StyleSheet.create({
   centered: { backgroundColor: 'black', flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: 'white', marginTop: 20, fontSize: 13, letterSpacing: 1, fontWeight: 'bold' },
   counterText: { color: '#666', marginTop: 8, fontSize: 11, letterSpacing: 1 },
-  skipBtn: { marginTop: 30, paddingHorizontal: 20, paddingVertical: 10, borderWeight: 1, borderColor: '#444', borderWidth: 1, borderRadius: 4 },
+  skipBtn: { marginTop: 30, paddingHorizontal: 20, paddingVertical: 10, borderColor: '#444', borderWidth: 1, borderRadius: 4 },
   skipText: { color: '#888', fontSize: 11, fontWeight: 'bold' },
   resumeOverlay: { 
     position: 'absolute', zIndex: 99, backgroundColor: 'rgba(0,0,0,0.95)', padding: 40, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#333' 
